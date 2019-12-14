@@ -1,0 +1,1469 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.6.4"
+    },
+    "colab": {
+      "name": "DeepXplore_base.ipynb",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/isshii/de4test/blob/test_ozawa/DeepXplore/DeepXplore_03_04_MNIST_coverage_dependence_per_figure\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "UHbF5GaCQlkP",
+        "colab_type": "text"
+      },
+      "source": [
+        ""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "sGVFjZpUIRF4",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "# 共通で使うパスなどの定義\n",
+        "# 共通の変数設定\n",
+        "# 共通フォルダパス\n",
+        "data_dir = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/data\"\n",
+        "#data_imagenet = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/data/ImageNet\"\n",
+        "data_mnist = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/data/MNIST\"\n",
+        "#data_imagenet_seeds = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/data/ImageNet/seeds\"\n",
+        "model_dir = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/model\"\n",
+        "output_dir = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/output\"\n",
+        "tmp_dir = \"/content/gdrive/My Drive/ColabNotebooks/test4ai/tmp\"\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "V4lP4POGn5Xj",
+        "colab_type": "code",
+        "outputId": "b196e52b-c7f1-46ac-9b9d-988d73a19579",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 54
+        }
+      },
+      "source": [
+        "# Goggle Drive つなぐ\n",
+        "from google.colab import drive\n",
+        "drive.mount('/content/gdrive')"
+      ],
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Drive already mounted at /content/gdrive; to attempt to forcibly remount, call drive.mount(\"/content/gdrive\", force_remount=True).\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "z3d3Suv3Q5Db",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 68
+        },
+        "outputId": "f40b5dbc-df6d-46fc-904c-541b597f1c78"
+      },
+      "source": [
+        "# outputフォルダ内容物のクリーンアップ削除\n",
+        "!rm \"$output_dir\"/*"
+      ],
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "rm: cannot remove '/content/gdrive/My Drive/ColabNotebooks/test4ai/output/20191213_2030': Is a directory\n",
+            "rm: cannot remove '/content/gdrive/My Drive/ColabNotebooks/test4ai/output/20191213_2045': Is a directory\n",
+            "rm: cannot remove '/content/gdrive/My Drive/ColabNotebooks/test4ai/output/20191214_1430': Is a directory\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "vhdHYnLT0Nbt",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "import sys\n",
+        "sys.path.append('/content/gdrive/My Drive/ColabNotebooks/test4ai/model/MNIST')\n",
+        "\n",
+        "class bcolors:\n",
+        "    HEADER = '\\033[95m'\n",
+        "    OKBLUE = '\\033[94m'\n",
+        "    OKGREEN = '\\033[92m'\n",
+        "    WARNING = '\\033[93m'\n",
+        "    FAIL = '\\033[91m'\n",
+        "    ENDC = '\\033[0m'\n",
+        "    BOLD = '\\033[1m'\n",
+        "    UNDERLINE = '\\033[4m'"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "aDY8sDVBqxmK",
+        "colab_type": "code",
+        "outputId": "4807d7ac-ec2c-4010-d32c-cec40232aa05",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        }
+      },
+      "source": [
+        "import argparse\n",
+        "\n",
+        "%tensorflow_version 1.x\n",
+        "from keras.datasets import mnist\n",
+        "from keras.layers import Input\n",
+        "import imageio\n",
+        "\n",
+        "from __future__ import print_function\n",
+        "\n",
+        "from keras.datasets import mnist\n",
+        "from keras.layers import Convolution2D, MaxPooling2D, Input, Dense, Activation, Flatten\n",
+        "from keras.models import Model\n",
+        "from keras.utils import to_categorical\n",
+        "import os"
+      ],
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Using TensorFlow backend.\n"
+          ],
+          "name": "stderr"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "aiGGwQVElJNH",
+        "colab_type": "code",
+        "outputId": "27782a40-51d1-40a0-e708-62a3dd011050",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 477
+        }
+      },
+      "source": [
+        "from tensorflow.python.client import device_lib\n",
+        "device_lib.list_local_devices()"
+      ],
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "[name: \"/device:CPU:0\"\n",
+              " device_type: \"CPU\"\n",
+              " memory_limit: 268435456\n",
+              " locality {\n",
+              " }\n",
+              " incarnation: 3356423462186322985, name: \"/device:XLA_CPU:0\"\n",
+              " device_type: \"XLA_CPU\"\n",
+              " memory_limit: 17179869184\n",
+              " locality {\n",
+              " }\n",
+              " incarnation: 10968438729618667815\n",
+              " physical_device_desc: \"device: XLA_CPU device\", name: \"/device:XLA_GPU:0\"\n",
+              " device_type: \"XLA_GPU\"\n",
+              " memory_limit: 17179869184\n",
+              " locality {\n",
+              " }\n",
+              " incarnation: 13785082693302236792\n",
+              " physical_device_desc: \"device: XLA_GPU device\", name: \"/device:GPU:0\"\n",
+              " device_type: \"GPU\"\n",
+              " memory_limit: 15956161332\n",
+              " locality {\n",
+              "   bus_id: 1\n",
+              "   links {\n",
+              "   }\n",
+              " }\n",
+              " incarnation: 15863528042522670202\n",
+              " physical_device_desc: \"device: 0, name: Tesla P100-PCIE-16GB, pci bus id: 0000:00:04.0, compute capability: 6.0\"]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 6
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "mWQ2M_8glJNM",
+        "colab_type": "code",
+        "cellView": "code",
+        "outputId": "490f4390-3603-4c41-831f-088a6abba506",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 54
+        }
+      },
+      "source": [
+        "#@title デフォルトのタイトル テキスト\n",
+        "# DeepXplore のパラメータ設定部\n",
+        "# read the parameter\n",
+        "# argument parsing\n",
+        "parser = argparse.ArgumentParser(description='Main function for difference-inducing input generation in MNIST dataset')\n",
+        "parser.add_argument('transformation', help=\"realistic transformation type\", choices=['light', 'occl', 'blackout'])\n",
+        "parser.add_argument('weight_diff', help=\"weight hyperparm to control differential behavior\", type=float)\n",
+        "parser.add_argument('weight_nc', help=\"weight hyperparm to control neuron coverage\", type=float)\n",
+        "parser.add_argument('step', help=\"step size of gradient descent\", type=float)\n",
+        "parser.add_argument('seeds', help=\"number of seeds of input\", type=int)\n",
+        "parser.add_argument('grad_iterations', help=\"number of iterations of gradient descent\", type=int)\n",
+        "parser.add_argument('threshold', help=\"threshold for determining neuron activated\", type=float)\n",
+        "parser.add_argument('-t', '--target_model', help=\"target model that we want it predicts differently\",\n",
+        "                    choices=[0, 1, 2], default=0, type=int)\n",
+        "parser.add_argument('-sp', '--start_point', help=\"occlusion upper left corner coordinate\", default=(0, 0), type=tuple)\n",
+        "parser.add_argument('-occl_size', '--occlusion_size', help=\"occlusion size\", default=(10, 10), type=tuple)"
+      ],
+      "execution_count": 7,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "_StoreAction(option_strings=['-occl_size', '--occlusion_size'], dest='occlusion_size', nargs=None, const=None, default=(10, 10), type=<class 'tuple'>, choices=None, help='occlusion size', metavar=None)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 7
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "1Csx_IXrMdMj",
+        "colab_type": "text"
+      },
+      "source": [
+        ""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "93KW-VGjMzun",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "source": [
+        "#@title ノイズのタイプ light / occl / blackout\n",
+        "#@body {light,occl,blackout} weight_diff weight_nc step seeds\n",
+        "#                   grad_iterations threshold\n",
+        "noise_type = \"light\" #@param [\"light\", \"occl\", \"blackout\"]\n",
+        "weight_diff = \"0.1\" #@param {type:\"string\"}\n",
+        "weight_nc = \"0.1\" #@param {type:\"string\"}\n",
+        "step = \"20\" #@param {type:\"string\"}　#50だとほぼ白飛び\n",
+        "seeds = \"40\" #@param {type:\"string\"}\n",
+        "grad_iterations = \"10\" #@param {type:\"string\"}\n",
+        "threshold = \"0.1\" #@param {type:\"string\"}"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Szk80fCuPts9",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "args = parser.parse_args([noise_type, weight_diff, weight_nc, step, seeds, grad_iterations, threshold])"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "1tTYrllplJNQ",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "import random\n",
+        "from collections import defaultdict\n",
+        "\n",
+        "import numpy as np\n",
+        "from keras import backend as K\n",
+        "from keras.models import Model\n",
+        "\n",
+        "\n",
+        "# util function to convert a tensor into a valid image\n",
+        "def deprocess_image(x):\n",
+        "    x *= 255\n",
+        "    x = np.clip(x, 0, 255).astype('uint8')\n",
+        "    return x.reshape(x.shape[1], x.shape[2])  # original shape (1,img_rows, img_cols,1)\n",
+        "\n",
+        "\n",
+        "def normalize(x):\n",
+        "    # utility function to normalize a tensor by its L2 norm\n",
+        "    return x / (K.sqrt(K.mean(K.square(x))) + 1e-5)\n",
+        "\n",
+        "\n",
+        "def constraint_occl(gradients, start_point, rect_shape):\n",
+        "    new_grads = np.zeros_like(gradients)\n",
+        "    new_grads[:, start_point[0]:start_point[0] + rect_shape[0],\n",
+        "    start_point[1]:start_point[1] + rect_shape[1]] = gradients[:, start_point[0]:start_point[0] + rect_shape[0],\n",
+        "                                                     start_point[1]:start_point[1] + rect_shape[1]]\n",
+        "    return new_grads\n",
+        "\n",
+        "\n",
+        "def constraint_light(gradients):\n",
+        "    new_grads = np.ones_like(gradients)\n",
+        "    grad_mean = np.mean(gradients)\n",
+        "    return grad_mean * new_grads\n",
+        "\n",
+        "\n",
+        "def constraint_black(gradients, rect_shape=(6, 6)):\n",
+        "    start_point = (\n",
+        "        random.randint(0, gradients.shape[1] - rect_shape[0]), random.randint(0, gradients.shape[2] - rect_shape[1]))\n",
+        "    new_grads = np.zeros_like(gradients)\n",
+        "    patch = gradients[:, start_point[0]:start_point[0] + rect_shape[0], start_point[1]:start_point[1] + rect_shape[1]]\n",
+        "    if np.mean(patch) < 0:\n",
+        "        new_grads[:, start_point[0]:start_point[0] + rect_shape[0],\n",
+        "        start_point[1]:start_point[1] + rect_shape[1]] = -np.ones_like(patch)\n",
+        "    return new_grads\n",
+        "\n",
+        "\n",
+        "def init_coverage_tables(model1, model2, model3):\n",
+        "    model_layer_dict1 = defaultdict(bool)\n",
+        "    model_layer_dict2 = defaultdict(bool)\n",
+        "    model_layer_dict3 = defaultdict(bool)\n",
+        "    init_dict(model1, model_layer_dict1)\n",
+        "    init_dict(model2, model_layer_dict2)\n",
+        "    init_dict(model3, model_layer_dict3)\n",
+        "    return model_layer_dict1, model_layer_dict2, model_layer_dict3\n",
+        "\n",
+        "\n",
+        "def init_dict(model, model_layer_dict):\n",
+        "    for layer in model.layers:\n",
+        "        if 'flatten' in layer.name or 'input' in layer.name:\n",
+        "            continue\n",
+        "        for index in range(layer.output_shape[-1]):\n",
+        "            model_layer_dict[(layer.name, index)] = False\n",
+        "\n",
+        "\n",
+        "def neuron_to_cover(model_layer_dict):\n",
+        "    not_covered = [(layer_name, index) for (layer_name, index), v in model_layer_dict.items() if not v]\n",
+        "    if not_covered:\n",
+        "        layer_name, index = random.choice(not_covered)\n",
+        "    else:\n",
+        "        layer_name, index = random.choice(model_layer_dict.keys())\n",
+        "    return layer_name, index\n",
+        "\n",
+        "\n",
+        "def neuron_covered(model_layer_dict):\n",
+        "    covered_neurons = len([v for v in model_layer_dict.values() if v])\n",
+        "    total_neurons = len(model_layer_dict)\n",
+        "    return covered_neurons, total_neurons, covered_neurons / float(total_neurons)\n",
+        "\n",
+        "\n",
+        "def update_coverage(input_data, model, model_layer_dict, threshold=0):\n",
+        "    layer_names = [layer.name for layer in model.layers if\n",
+        "                   'flatten' not in layer.name and 'input' not in layer.name]\n",
+        "\n",
+        "    intermediate_layer_model = Model(inputs=model.input,\n",
+        "                                     outputs=[model.get_layer(layer_name).output for layer_name in layer_names])\n",
+        "    intermediate_layer_outputs = intermediate_layer_model.predict(input_data)\n",
+        "\n",
+        "    for i, intermediate_layer_output in enumerate(intermediate_layer_outputs):\n",
+        "        scaled = scale(intermediate_layer_output[0])\n",
+        "        for num_neuron in range(scaled.shape[-1]):\n",
+        "            if np.mean(scaled[..., num_neuron]) > threshold and not model_layer_dict[(layer_names[i], num_neuron)]:\n",
+        "                model_layer_dict[(layer_names[i], num_neuron)] = True\n",
+        "\n",
+        "\n",
+        "def full_coverage(model_layer_dict):\n",
+        "    if False in model_layer_dict.values():\n",
+        "        return False\n",
+        "    return True\n",
+        "\n",
+        "\n",
+        "def scale(intermediate_layer_output, rmax=1, rmin=0):\n",
+        "    X_std = (intermediate_layer_output - intermediate_layer_output.min()) / (\n",
+        "        intermediate_layer_output.max() - intermediate_layer_output.min())\n",
+        "    X_scaled = X_std * (rmax - rmin) + rmin\n",
+        "    return X_scaled\n",
+        "\n",
+        "\n",
+        "def fired(model, layer_name, index, input_data, threshold=0):\n",
+        "    intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer(layer_name).output)\n",
+        "    intermediate_layer_output = intermediate_layer_model.predict(input_data)[0]\n",
+        "    scaled = scale(intermediate_layer_output)\n",
+        "    if np.mean(scaled[..., index]) > threshold:\n",
+        "        return True\n",
+        "    return False\n",
+        "\n",
+        "\n",
+        "def diverged(predictions1, predictions2, predictions3, target):\n",
+        "    #     if predictions2 == predictions3 == target and predictions1 != target:\n",
+        "    if not predictions1 == predictions2 == predictions3:\n",
+        "        return True\n",
+        "    return False\n",
+        "\n",
+        "\n",
+        "#add\n",
+        "def list_pictures(directory, ext='jpg|jpeg|bmp|png|ppm'):\n",
+        "    return [os.path.join(root, f)\n",
+        "            for root, _, files in os.walk(directory) for f in files\n",
+        "            if re.match(r'([\\w]+\\.(?:' + ext + '))', f.lower())]"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "xoRphb5Fl0JT",
+        "colab_type": "code",
+        "outputId": "b95ad0c8-6f8d-4eb1-e33b-0780e1719f58",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 105
+        }
+      },
+      "source": [
+        "# input image dimensions\n",
+        "img_rows, img_cols = 28, 28\n",
+        "# the data, shuffled and split between train and test sets\n",
+        "(_, _), (x_test, _) = mnist.load_data()\n",
+        "\n",
+        "x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)\n",
+        "input_shape = (img_rows, img_cols, 1)\n",
+        "\n",
+        "x_test = x_test.astype('float32')\n",
+        "x_test /= 255\n",
+        "\n",
+        "# define input tensor as a placeholder\n",
+        "input_tensor = Input(shape=input_shape)"
+      ],
+      "execution_count": 11,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:66: The name tf.get_default_graph is deprecated. Please use tf.compat.v1.get_default_graph instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:541: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.\n",
+            "\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "UDDT47Er6u23",
+        "colab_type": "code",
+        "outputId": "445689b2-89b6-4b60-e752-32a9b231599f",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 941
+        }
+      },
+      "source": [
+        "'''\n",
+        "LeNet-1\n",
+        "'''\n",
+        "def Model1(input_tensor=None, train=False):\n",
+        "    nb_classes = 10\n",
+        "    # convolution kernel size\n",
+        "    kernel_size = (5, 5)\n",
+        "\n",
+        "    if train:\n",
+        "        batch_size = 256\n",
+        "        nb_epoch = 10\n",
+        "\n",
+        "        # input image dimensions\n",
+        "        img_rows, img_cols = 28, 28\n",
+        "\n",
+        "        # the data, shuffled and split between train and test sets\n",
+        "        (x_train, y_train), (x_test, y_test) = mnist.load_data()\n",
+        "\n",
+        "        print(x_train.shape)\n",
+        "        x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)\n",
+        "        x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)\n",
+        "        input_shape = (img_rows, img_cols, 1)\n",
+        "\n",
+        "        x_train = x_train.astype('float32')\n",
+        "        x_test = x_test.astype('float32')\n",
+        "        x_train /= 255\n",
+        "        x_test /= 255\n",
+        "\n",
+        "        # convert class vectors to binary class matrices\n",
+        "        y_train = to_categorical(y_train, nb_classes)\n",
+        "        y_test = to_categorical(y_test, nb_classes)\n",
+        "\n",
+        "        input_tensor = Input(shape=input_shape)\n",
+        "    elif input_tensor is None:\n",
+        "        print(bcolors.FAIL + 'you have to proved input_tensor when testing')\n",
+        "        exit()\n",
+        "\n",
+        "    # block1\n",
+        "    x = Convolution2D(4, kernel_size, activation='relu', padding='same', name='block1_conv1')(input_tensor)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block1_pool1')(x)\n",
+        "\n",
+        "    # block2\n",
+        "    x = Convolution2D(12, kernel_size, activation='relu', padding='same', name='block2_conv1')(x)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block2_pool1')(x)\n",
+        "\n",
+        "    x = Flatten(name='flatten')(x)\n",
+        "    x = Dense(nb_classes, name='before_softmax')(x)\n",
+        "    x = Activation('softmax', name='predictions')(x)\n",
+        "\n",
+        "    model = Model(input_tensor, x)\n",
+        "\n",
+        "    if train:\n",
+        "        # compiling\n",
+        "        model.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['accuracy'])\n",
+        "\n",
+        "        # trainig\n",
+        "        model.fit(x_train, y_train, validation_data=(x_test, y_test), batch_size=batch_size, epochs=nb_epoch, verbose=1)\n",
+        "        # save model\n",
+        "#        model.save_weights('./Model1.h5')\n",
+        "        model.save_weights('/content/gdrive/My Drive/ColabNotebooks/test4ai/model/MNIST/Model1.h5')\n",
+        "        score = model.evaluate(x_test, y_test, verbose=0)\n",
+        "        print('\\n')\n",
+        "        print('Overall Test score:', score[0])\n",
+        "        print('Overall Test accuracy:', score[1])\n",
+        "    else:\n",
+        "#        model.load_weights('./Model1.h5')\n",
+        "        model.load_weights('/content/gdrive/My Drive/ColabNotebooks/test4ai/model/MNIST/Model1.h5')\n",
+        "        print(bcolors.OKBLUE + 'Model1 loaded' + bcolors.ENDC)\n",
+        "\n",
+        "    return model\n",
+        "\n",
+        "\n",
+        "if __name__ == '__main__':\n",
+        "    Model1(train=True)\n"
+      ],
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "(60000, 28, 28)\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:4432: The name tf.random_uniform is deprecated. Please use tf.random.uniform instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:4267: The name tf.nn.max_pool is deprecated. Please use tf.nn.max_pool2d instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/optimizers.py:793: The name tf.train.Optimizer is deprecated. Please use tf.compat.v1.train.Optimizer instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:3576: The name tf.log is deprecated. Please use tf.math.log instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/tensorflow_core/python/ops/math_grad.py:1424: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.\n",
+            "Instructions for updating:\n",
+            "Use tf.where in 2.0, which has the same broadcast rule as np.where\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:1033: The name tf.assign_add is deprecated. Please use tf.compat.v1.assign_add instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:1020: The name tf.assign is deprecated. Please use tf.compat.v1.assign instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:3005: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.\n",
+            "\n",
+            "Train on 60000 samples, validate on 10000 samples\n",
+            "Epoch 1/10\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:190: The name tf.get_default_session is deprecated. Please use tf.compat.v1.get_default_session instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:197: The name tf.ConfigProto is deprecated. Please use tf.compat.v1.ConfigProto instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:207: The name tf.global_variables is deprecated. Please use tf.compat.v1.global_variables instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:216: The name tf.is_variable_initialized is deprecated. Please use tf.compat.v1.is_variable_initialized instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:223: The name tf.variables_initializer is deprecated. Please use tf.compat.v1.variables_initializer instead.\n",
+            "\n",
+            "60000/60000 [==============================] - 3s 58us/step - loss: 0.4644 - acc: 0.8593 - val_loss: 0.1248 - val_acc: 0.9629\n",
+            "Epoch 2/10\n",
+            "60000/60000 [==============================] - 1s 21us/step - loss: 0.1117 - acc: 0.9662 - val_loss: 0.1009 - val_acc: 0.9695\n",
+            "Epoch 3/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0826 - acc: 0.9748 - val_loss: 0.0626 - val_acc: 0.9818\n",
+            "Epoch 4/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0692 - acc: 0.9793 - val_loss: 0.0548 - val_acc: 0.9830\n",
+            "Epoch 5/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0612 - acc: 0.9812 - val_loss: 0.0495 - val_acc: 0.9855\n",
+            "Epoch 6/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0551 - acc: 0.9828 - val_loss: 0.0475 - val_acc: 0.9849\n",
+            "Epoch 7/10\n",
+            "60000/60000 [==============================] - 1s 21us/step - loss: 0.0509 - acc: 0.9848 - val_loss: 0.0423 - val_acc: 0.9870\n",
+            "Epoch 8/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0473 - acc: 0.9853 - val_loss: 0.0405 - val_acc: 0.9867\n",
+            "Epoch 9/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0447 - acc: 0.9862 - val_loss: 0.0431 - val_acc: 0.9861\n",
+            "Epoch 10/10\n",
+            "60000/60000 [==============================] - 1s 20us/step - loss: 0.0419 - acc: 0.9872 - val_loss: 0.0460 - val_acc: 0.9847\n",
+            "\n",
+            "\n",
+            "Overall Test score: 0.045963319327728826\n",
+            "Overall Test accuracy: 0.9847\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "JU88awZf68JO",
+        "colab_type": "code",
+        "outputId": "fcba657d-d9da-4f2a-fe07-54dfe50c0194",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 463
+        }
+      },
+      "source": [
+        "'''\n",
+        "LeNet-4\n",
+        "'''\n",
+        "def Model2(input_tensor=None, train=False):\n",
+        "    nb_classes = 10\n",
+        "    # convolution kernel size\n",
+        "    kernel_size = (5, 5)\n",
+        "\n",
+        "    if train:\n",
+        "        batch_size = 256\n",
+        "        nb_epoch = 10\n",
+        "\n",
+        "        # input image dimensions\n",
+        "        img_rows, img_cols = 28, 28\n",
+        "\n",
+        "        # the data, shuffled and split between train and test sets\n",
+        "        (x_train, y_train), (x_test, y_test) = mnist.load_data()\n",
+        "\n",
+        "        x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)\n",
+        "        x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)\n",
+        "        input_shape = (img_rows, img_cols, 1)\n",
+        "\n",
+        "        x_train = x_train.astype('float32')\n",
+        "        x_test = x_test.astype('float32')\n",
+        "        x_train /= 255\n",
+        "        x_test /= 255\n",
+        "\n",
+        "        # convert class vectors to binary class matrices\n",
+        "        y_train = to_categorical(y_train, nb_classes)\n",
+        "        y_test = to_categorical(y_test, nb_classes)\n",
+        "\n",
+        "        input_tensor = Input(shape=input_shape)\n",
+        "    elif input_tensor is None:\n",
+        "        print(bcolors.FAIL + 'you have to proved input_tensor when testing')\n",
+        "        exit()\n",
+        "\n",
+        "    # block1\n",
+        "    x = Convolution2D(6, kernel_size, activation='relu', padding='same', name='block1_conv1')(input_tensor)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block1_pool1')(x)\n",
+        "\n",
+        "    # block2\n",
+        "    x = Convolution2D(16, kernel_size, activation='relu', padding='same', name='block2_conv1')(x)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block2_pool1')(x)\n",
+        "\n",
+        "    x = Flatten(name='flatten')(x)\n",
+        "    x = Dense(84, activation='relu', name='fc1')(x)\n",
+        "    x = Dense(nb_classes, name='before_softmax')(x)\n",
+        "    x = Activation('softmax', name='predictions')(x)\n",
+        "\n",
+        "    model = Model(input_tensor, x)\n",
+        "\n",
+        "    if train:\n",
+        "        # compiling\n",
+        "        model.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['accuracy'])\n",
+        "\n",
+        "        # trainig\n",
+        "        model.fit(x_train, y_train, validation_data=(x_test, y_test), batch_size=batch_size, epochs=nb_epoch, verbose=1)\n",
+        "        # save model\n",
+        "        model.save_weights('./Model2.h5')\n",
+        "        score = model.evaluate(x_test, y_test, verbose=0)\n",
+        "        print('\\n')\n",
+        "        print('Overall Test score:', score[0])\n",
+        "        print('Overall Test accuracy:', score[1])\n",
+        "    else:\n",
+        "        model.load_weights('./Model2.h5')\n",
+        "        print(bcolors.OKBLUE + 'Model2 loaded' + bcolors.ENDC)\n",
+        "\n",
+        "    return model\n",
+        "\n",
+        "\n",
+        "if __name__ == '__main__':\n",
+        "    Model2(train=True)\n"
+      ],
+      "execution_count": 13,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Train on 60000 samples, validate on 10000 samples\n",
+            "Epoch 1/10\n",
+            "60000/60000 [==============================] - 2s 28us/step - loss: 0.3888 - acc: 0.8780 - val_loss: 0.1448 - val_acc: 0.9564\n",
+            "Epoch 2/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0991 - acc: 0.9694 - val_loss: 0.0679 - val_acc: 0.9765\n",
+            "Epoch 3/10\n",
+            "60000/60000 [==============================] - 1s 22us/step - loss: 0.0700 - acc: 0.9784 - val_loss: 0.1069 - val_acc: 0.9658\n",
+            "Epoch 4/10\n",
+            "60000/60000 [==============================] - 1s 22us/step - loss: 0.0558 - acc: 0.9829 - val_loss: 0.0523 - val_acc: 0.9825\n",
+            "Epoch 5/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0465 - acc: 0.9853 - val_loss: 0.0366 - val_acc: 0.9875\n",
+            "Epoch 6/10\n",
+            "60000/60000 [==============================] - 1s 22us/step - loss: 0.0393 - acc: 0.9877 - val_loss: 0.0470 - val_acc: 0.9842\n",
+            "Epoch 7/10\n",
+            "60000/60000 [==============================] - 1s 22us/step - loss: 0.0335 - acc: 0.9894 - val_loss: 0.0367 - val_acc: 0.9885\n",
+            "Epoch 8/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0296 - acc: 0.9901 - val_loss: 0.0393 - val_acc: 0.9870\n",
+            "Epoch 9/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0258 - acc: 0.9914 - val_loss: 0.0296 - val_acc: 0.9899\n",
+            "Epoch 10/10\n",
+            "60000/60000 [==============================] - 1s 22us/step - loss: 0.0222 - acc: 0.9931 - val_loss: 0.0324 - val_acc: 0.9898\n",
+            "\n",
+            "\n",
+            "Overall Test score: 0.03242022263383842\n",
+            "Overall Test accuracy: 0.9898\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "ufs67uRN7KYL",
+        "colab_type": "code",
+        "outputId": "b48f420f-5516-4e96-9916-20dba37b60b9",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 463
+        }
+      },
+      "source": [
+        "'''\n",
+        "LeNet-5\n",
+        "'''\n",
+        "def Model3(input_tensor=None, train=False):\n",
+        "    nb_classes = 10\n",
+        "    # convolution kernel size\n",
+        "    kernel_size = (5, 5)\n",
+        "\n",
+        "    if train:\n",
+        "        batch_size = 256\n",
+        "        nb_epoch = 10\n",
+        "\n",
+        "        # input image dimensions\n",
+        "        img_rows, img_cols = 28, 28\n",
+        "\n",
+        "        # the data, shuffled and split between train and test sets\n",
+        "        (x_train, y_train), (x_test, y_test) = mnist.load_data()\n",
+        "\n",
+        "        x_train = x_train.reshape(x_train.shape[0], img_rows, img_cols, 1)\n",
+        "        x_test = x_test.reshape(x_test.shape[0], img_rows, img_cols, 1)\n",
+        "        input_shape = (img_rows, img_cols, 1)\n",
+        "\n",
+        "        x_train = x_train.astype('float32')\n",
+        "        x_test = x_test.astype('float32')\n",
+        "        x_train /= 255\n",
+        "        x_test /= 255\n",
+        "\n",
+        "        # convert class vectors to binary class matrices\n",
+        "        y_train = to_categorical(y_train, nb_classes)\n",
+        "        y_test = to_categorical(y_test, nb_classes)\n",
+        "\n",
+        "        input_tensor = Input(shape=input_shape)\n",
+        "    elif input_tensor is None:\n",
+        "        print(bcolors.FAIL + 'you have to proved input_tensor when testing')\n",
+        "        exit()\n",
+        "\n",
+        "    # block1\n",
+        "    x = Convolution2D(6, kernel_size, activation='relu', padding='same', name='block1_conv1')(input_tensor)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block1_pool1')(x)\n",
+        "\n",
+        "    # block2\n",
+        "    x = Convolution2D(16, kernel_size, activation='relu', padding='same', name='block2_conv1')(x)\n",
+        "    x = MaxPooling2D(pool_size=(2, 2), name='block2_pool1')(x)\n",
+        "\n",
+        "    x = Flatten(name='flatten')(x)\n",
+        "    x = Dense(120, activation='relu', name='fc1')(x)\n",
+        "    x = Dense(84, activation='relu', name='fc2')(x)\n",
+        "    x = Dense(nb_classes, name='before_softmax')(x)\n",
+        "    x = Activation('softmax', name='predictions')(x)\n",
+        "\n",
+        "    model = Model(input_tensor, x)\n",
+        "\n",
+        "    if train:\n",
+        "        # compiling\n",
+        "        model.compile(loss='categorical_crossentropy', optimizer='adadelta', metrics=['accuracy'])\n",
+        "\n",
+        "        # trainig\n",
+        "        model.fit(x_train, y_train, validation_data=(x_test, y_test), batch_size=batch_size, epochs=nb_epoch, verbose=1)\n",
+        "        # save model\n",
+        "        model.save_weights('./Model3.h5')\n",
+        "        score = model.evaluate(x_test, y_test, verbose=0)\n",
+        "        print('\\n')\n",
+        "        print('Overall Test score:', score[0])\n",
+        "        print('Overall Test accuracy:', score[1])\n",
+        "    else:\n",
+        "        model.load_weights('./Model3.h5')\n",
+        "        print(bcolors.OKBLUE + 'Model3 loaded' + bcolors.ENDC)\n",
+        "\n",
+        "    return model\n",
+        "\n",
+        "\n",
+        "if __name__ == '__main__':\n",
+        "    Model3(train=True)\n"
+      ],
+      "execution_count": 14,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Train on 60000 samples, validate on 10000 samples\n",
+            "Epoch 1/10\n",
+            "60000/60000 [==============================] - 2s 30us/step - loss: 0.3747 - acc: 0.8843 - val_loss: 0.1052 - val_acc: 0.9662\n",
+            "Epoch 2/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0737 - acc: 0.9764 - val_loss: 0.0570 - val_acc: 0.9807\n",
+            "Epoch 3/10\n",
+            "60000/60000 [==============================] - 1s 24us/step - loss: 0.0526 - acc: 0.9835 - val_loss: 0.0635 - val_acc: 0.9794\n",
+            "Epoch 4/10\n",
+            "60000/60000 [==============================] - 1s 24us/step - loss: 0.0410 - acc: 0.9870 - val_loss: 0.0311 - val_acc: 0.9896\n",
+            "Epoch 5/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0344 - acc: 0.9890 - val_loss: 0.0332 - val_acc: 0.9897\n",
+            "Epoch 6/10\n",
+            "60000/60000 [==============================] - 1s 24us/step - loss: 0.0280 - acc: 0.9910 - val_loss: 0.0304 - val_acc: 0.9906\n",
+            "Epoch 7/10\n",
+            "60000/60000 [==============================] - 1s 24us/step - loss: 0.0227 - acc: 0.9928 - val_loss: 0.0664 - val_acc: 0.9789\n",
+            "Epoch 8/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0199 - acc: 0.9935 - val_loss: 0.0344 - val_acc: 0.9876\n",
+            "Epoch 9/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0170 - acc: 0.9948 - val_loss: 0.0312 - val_acc: 0.9904\n",
+            "Epoch 10/10\n",
+            "60000/60000 [==============================] - 1s 23us/step - loss: 0.0149 - acc: 0.9952 - val_loss: 0.0319 - val_acc: 0.9893\n",
+            "\n",
+            "\n",
+            "Overall Test score: 0.03191802899888135\n",
+            "Overall Test accuracy: 0.9893\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "7K9QiwlW7WWR",
+        "colab_type": "code",
+        "outputId": "7d1d946c-1600-4e72-f2da-105d62b325b2",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 68
+        }
+      },
+      "source": [
+        "model1 = Model1(input_tensor=input_tensor)\n",
+        "model2 = Model2(input_tensor=input_tensor)\n",
+        "model3 = Model3(input_tensor=input_tensor)\n",
+        "model_layer_dict1, model_layer_dict2, model_layer_dict3 = init_coverage_tables(model1, model2, model3)"
+      ],
+      "execution_count": 15,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "\u001b[94mModel1 loaded\u001b[0m\n",
+            "\u001b[94mModel2 loaded\u001b[0m\n",
+            "\u001b[94mModel3 loaded\u001b[0m\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "KD6cHroNl43Q",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "# start gen inputs\n",
+        "# img_paths = list_pictures(data_imagenet_seeds)"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "brFIdSfL8nHP",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 204
+        },
+        "outputId": "7b80129b-c589-4268-f138-646b2275d99d"
+      },
+      "source": [
+        "(x_train, y_train), (x_test, y_test) = mnist.load_data()\n",
+        "test_per_fig_x = np.array([])\n",
+        "test_per_fig_y = np.array([])\n",
+        "tests_x = np.array([])\n",
+        "tests_y = np.array([])\n",
+        "\n",
+        "x_train = x_train.astype('float32')\n",
+        "x_test = x_test.astype('float32')\n",
+        "#x_train = x_train.astype('float')\n",
+        "#x_test = x_test.astype('float')\n",
+        "x_train /= 255\n",
+        "x_test /= 255\n",
+        "\n",
+        "length = int(args.seeds/10)\n",
+        "for i in range(10):\n",
+        "  cond = [(x==i) for x in y_test]\n",
+        "  test_per_fig_x = x_test[cond]\n",
+        "  test_per_fig_y = y_test[cond]\n",
+        "  print(i, test_per_fig_x.shape, test_per_fig_x.shape[0]-1000)\n",
+        "  tests_x = np.append(tests_x, test_per_fig_x[:length])\n",
+        "  tests_y = np.append(tests_y, test_per_fig_y[:length])\n",
+        "#  conds = [conds, cond]\n",
+        "print(\"check!\", tests_x.shape[0]/28/28/10, \"=\", length, \"equal?\")\n",
+        "tests_x = tests_x.reshape(-1,28,28,1)\n",
+        "#tests_x = tests_x.reshape(-1,1,28,28,1,)\n",
+        "tests_x.shape\n",
+        "tests_x = tests_x.astype('float32')"
+      ],
+      "execution_count": 17,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "0 (980, 28, 28) -20\n",
+            "1 (1135, 28, 28) 135\n",
+            "2 (1032, 28, 28) 32\n",
+            "3 (1010, 28, 28) 10\n",
+            "4 (982, 28, 28) -18\n",
+            "5 (892, 28, 28) -108\n",
+            "6 (958, 28, 28) -42\n",
+            "7 (1028, 28, 28) 28\n",
+            "8 (974, 28, 28) -26\n",
+            "9 (1009, 28, 28) 9\n",
+            "check! 4.0 = 4 equal?\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "eyo2SSSz8vkT",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "74d21099-4398-413a-e883-a52cacb03b38"
+      },
+      "source": [
+        "x_test.shape"
+      ],
+      "execution_count": 18,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "(10000, 28, 28)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 18
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "lkfdTZi4mUPf",
+        "colab_type": "code",
+        "outputId": "69baa88f-14ea-4c20-cbc0-7c9e2f000e9e",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        }
+      },
+      "source": [
+        "%%time\n",
+        "\n",
+        "count_already = 0\n",
+        "count_found = 0\n",
+        "count_not_found = 0\n",
+        "temp_per_nc1 = np.array([])\n",
+        "temp_per_nc2 = np.array([])\n",
+        "temp_per_nc3 = np.array([])\n",
+        "temp_num_nc1 = np.array([])\n",
+        "temp_num_nc2 = np.array([])\n",
+        "temp_num_nc3 = np.array([])\n",
+        "\n",
+        "for index_fig in range(10):\n",
+        "  print(\"figure\"+str(index_fig))\n",
+        "  for _ in range(length):\n",
+        "      #gen_img = np.expand_dims(random.choice(tests_x), axis=0)\n",
+        "      gen_img = np.expand_dims(tests_x[(length*index_fig + _)], axis=0)\n",
+        "      orig_img = gen_img.copy()\n",
+        "      # first check if input already induces differences\n",
+        "      label1, label2, label3 = np.argmax(model1.predict(gen_img)[0]), np.argmax(model2.predict(gen_img)[0]), np.argmax(model3.predict(gen_img)[0])\n",
+        "\n",
+        "      if not label1 == label2 == label3:\n",
+        "          count_already += 1\n",
+        "          print(bcolors.OKGREEN + '{}/{}. input already causes different outputs ({},{},{}) at{}/{}: '.format(_, length, label1, label2, label3, count_already, count_already + count_found + count_not_found) + bcolors.ENDC)        \n",
+        "          print(bcolors.OKGREEN + '{}/{}. input already causes different outputs ({},{},{}) at{}/{}: '.format(_, length, label1, label2, label3, count_already, count_already + count_found + count_not_found) + bcolors.ENDC)        \n",
+        "\n",
+        "          update_coverage(gen_img, model1, model_layer_dict1, args.threshold)\n",
+        "          update_coverage(gen_img, model2, model_layer_dict2, args.threshold)\n",
+        "          update_coverage(gen_img, model3, model_layer_dict3, args.threshold)\n",
+        "\n",
+        "          temp_per_nc1=np.append(temp_per_nc1,  neuron_covered(model_layer_dict1)[2])\n",
+        "          temp_per_nc2=np.append(temp_per_nc2,  neuron_covered(model_layer_dict2)[2])\n",
+        "          temp_per_nc3=np.append(temp_per_nc3,  neuron_covered(model_layer_dict3)[2])\n",
+        "          temp_num_nc1=np.append(temp_num_nc1,  neuron_covered(model_layer_dict1)[0])\n",
+        "          temp_num_nc2=np.append(temp_num_nc2,  neuron_covered(model_layer_dict2)[0])\n",
+        "          temp_num_nc3=np.append(temp_num_nc3,  neuron_covered(model_layer_dict3)[0])\n",
+        "                               \n",
+        "          print(bcolors.OKGREEN + '     covered neurons percentage %d neurons %.3f, %d neurons %.3f, %d neurons %.3f'% (len(model_layer_dict1), neuron_covered(model_layer_dict1)[2], len(model_layer_dict2),\n",
+        "                  neuron_covered(model_layer_dict2)[2], len(model_layer_dict3), neuron_covered(model_layer_dict3)[2]) + bcolors.ENDC)\n",
+        "          averaged_nc = (neuron_covered(model_layer_dict1)[0] + neuron_covered(model_layer_dict2)[0] +\n",
+        "                       neuron_covered(model_layer_dict3)[0]) / float(neuron_covered(model_layer_dict1)[1] + neuron_covered(model_layer_dict2)[1] +neuron_covered(model_layer_dict3)[1])\n",
+        "          print(bcolors.OKGREEN + '     averaged covered neurons %.3f' % (averaged_nc) + bcolors.ENDC)\n",
+        "\n",
+        "          gen_img_deprocessed = deprocess_image(gen_img)\n",
+        "\n",
+        "          # save the result to disk\n",
+        "          outputfilepath0 = os.path.join(output_dir, 'already_differ_' + str(label1) + '_' + str(label2) + '_' + str(label3) +'_['+ str(_) +  '].png')\n",
+        "          imageio.imwrite(outputfilepath0, gen_img_deprocessed)\n",
+        "          continue\n",
+        "\n",
+        "      # if all label agrees\n",
+        "      orig_label = label1\n",
+        "      layer_name1, index1 = neuron_to_cover(model_layer_dict1)\n",
+        "      layer_name2, index2 = neuron_to_cover(model_layer_dict2)\n",
+        "      layer_name3, index3 = neuron_to_cover(model_layer_dict3)\n",
+        "\n",
+        "      # construct joint loss function\n",
+        "      if args.target_model == 0:\n",
+        "        loss1 = -args.weight_diff * K.mean(model1.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss2 = K.mean(model2.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss3 = K.mean(model3.get_layer('before_softmax').output[..., orig_label])\n",
+        "      elif args.target_model == 1:\n",
+        "        loss1 = K.mean(model1.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss2 = -args.weight_diff * K.mean(model2.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss3 = K.mean(model3.get_layer('before_softmax').output[..., orig_label])\n",
+        "      elif args.target_model == 2:\n",
+        "        loss1 = K.mean(model1.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss2 = K.mean(model2.get_layer('before_softmax').output[..., orig_label])\n",
+        "        loss3 = -args.weight_diff * K.mean(model3.get_layer('before_softmax').output[..., orig_label])\n",
+        "      loss1_neuron = K.mean(model1.get_layer(layer_name1).output[..., index1])\n",
+        "      loss2_neuron = K.mean(model2.get_layer(layer_name2).output[..., index2])\n",
+        "      loss3_neuron = K.mean(model3.get_layer(layer_name3).output[..., index3])\n",
+        "      layer_output = (loss1 + loss2 + loss3) + args.weight_nc * (loss1_neuron + loss2_neuron + loss3_neuron)\n",
+        "\n",
+        "      # for adversarial image generation\n",
+        "      final_loss = K.mean(layer_output)\n",
+        "\n",
+        "      # we compute the gradient of the input picture wrt this loss\n",
+        "      grads = normalize(K.gradients(final_loss, input_tensor)[0])\n",
+        "\n",
+        "      # this function returns the loss and grads given the input picture\n",
+        "      iterate = K.function([input_tensor], [loss1, loss2, loss3, loss1_neuron, loss2_neuron, loss3_neuron, grads])\n",
+        "\n",
+        "      # we run gradient ascent for some steps\n",
+        "      for iters in range(args.grad_iterations):\n",
+        "        loss_value1, loss_value2, loss_value3, loss_neuron1, loss_neuron2, loss_neuron3, grads_value = iterate(\n",
+        "            [gen_img])\n",
+        "        if args.transformation == 'light':\n",
+        "            grads_value = constraint_light(grads_value)  # constraint the gradients value\n",
+        "        elif args.transformation == 'occl':\n",
+        "            grads_value = constraint_occl(grads_value, args.start_point,\n",
+        "                                          args.occlusion_size)  # constraint the gradients value\n",
+        "        elif args.transformation == 'blackout':\n",
+        "            grads_value = constraint_black(grads_value)  # constraint the gradients value\n",
+        "\n",
+        "        gen_img += grads_value * args.step\n",
+        "        predictions1 = np.argmax(model1.predict(gen_img)[0])\n",
+        "        predictions2 = np.argmax(model2.predict(gen_img)[0])\n",
+        "        predictions3 = np.argmax(model3.predict(gen_img)[0])\n",
+        "\n",
+        "        if not predictions1 == predictions2 == predictions3:\n",
+        "            update_coverage(gen_img, model1, model_layer_dict1, args.threshold)\n",
+        "            update_coverage(gen_img, model2, model_layer_dict2, args.threshold)\n",
+        "            update_coverage(gen_img, model3, model_layer_dict3, args.threshold)\n",
+        "            count_found += 1\n",
+        "            print(bcolors.OKBLUE + '%4d/%d. found at %d! covered neurons percentage %d neurons %.3f, %d neurons %.3f, %d neurons %.3f at %d/%d'\n",
+        "#                  % (_, args.seeds, iters, len(model_layer_dict1), neuron_covered(model_layer_dict1)[2], len(model_layer_dict2),\n",
+        "                  % (_, length, iters, len(model_layer_dict1), neuron_covered(model_layer_dict1)[2], len(model_layer_dict2),\n",
+        "                     neuron_covered(model_layer_dict2)[2], len(model_layer_dict3),\n",
+        "                     neuron_covered(model_layer_dict3)[2], count_found, count_already + count_found + count_not_found) + bcolors.ENDC)\n",
+        "            averaged_nc = (neuron_covered(model_layer_dict1)[0] + neuron_covered(model_layer_dict2)[0] +\n",
+        "                           neuron_covered(model_layer_dict3)[0]) / float(\n",
+        "                neuron_covered(model_layer_dict1)[1] + neuron_covered(model_layer_dict2)[1] +\n",
+        "                neuron_covered(model_layer_dict3)[\n",
+        "                    1])\n",
+        "            print(bcolors.OKBLUE + '     averaged covered neurons %.3f' % averaged_nc + bcolors.ENDC)\n",
+        "\n",
+        "            gen_img_deprocessed = deprocess_image(gen_img)\n",
+        "            orig_img_deprocessed = deprocess_image(orig_img)\n",
+        "\n",
+        "            # save the result to disk\n",
+        "            #outputfilepath = os.path.join(output_dir, args.transformation + '_' + str(label1) + '_' + str(label2) + '_' + str(label3) + '.png')\n",
+        "            outputfilepath = os.path.join(output_dir, args.transformation + '_from' + str(label1) + '_to' + str(predictions1) + '_'  + str(predictions2) + '_' + str(predictions3) +'_['+ str(_) +  '].png')\n",
+        "            #print(outputfilepath)\n",
+        "            imageio.imwrite(outputfilepath, gen_img_deprocessed)\n",
+        "#            outputfilepath2 = os.path.join(output_dir, args.transformation + '_' + str(label1) + '_' + str(label2) + '_' + str(label3) + '_orig.png')\n",
+        "            outputfilepath2 = os.path.join(output_dir, args.transformation + '_from' + str(label1) + '_to' + str(predictions1) + '_'  + str(predictions2) + '_' + str(predictions3) +'_['+ str(_) +  ']_orig.png')\n",
+        "            #print(outputfilepath2)\n",
+        "            imageio.imwrite(outputfilepath2, orig_img_deprocessed)\n",
+        "            temp_per_nc1=np.append(temp_per_nc1,  neuron_covered(model_layer_dict1)[2])\n",
+        "            temp_per_nc2=np.append(temp_per_nc2,  neuron_covered(model_layer_dict2)[2])\n",
+        "            temp_per_nc3=np.append(temp_per_nc3,  neuron_covered(model_layer_dict3)[2])\n",
+        "            temp_num_nc1=np.append(temp_num_nc1,  neuron_covered(model_layer_dict1)[0])\n",
+        "            temp_num_nc2=np.append(temp_num_nc2,  neuron_covered(model_layer_dict2)[0])\n",
+        "            temp_num_nc3=np.append(temp_num_nc3,  neuron_covered(model_layer_dict3)[0])\n",
+        "            break\n",
+        "          \n",
+        "          #add\n",
+        "        if iters == (args.grad_iterations-1):\n",
+        "            update_coverage(gen_img, model1, model_layer_dict1, args.threshold)\n",
+        "            update_coverage(gen_img, model2, model_layer_dict2, args.threshold)\n",
+        "            update_coverage(gen_img, model3, model_layer_dict3, args.threshold)\n",
+        "            averaged_nc = (neuron_covered(model_layer_dict1)[0] + neuron_covered(model_layer_dict2)[0] +\n",
+        "                           neuron_covered(model_layer_dict3)[0]) / float(neuron_covered(model_layer_dict1)[1] + neuron_covered(model_layer_dict2)[1] +\n",
+        "                neuron_covered(model_layer_dict3)[1])\n",
+        "            count_not_found += 1\n",
+        "#              print('%4d/%d. test suite was not found: averaged covered neurons %.3f at %d/%d' % (_, args.seeds, averaged_nc, count_not_found, count_already + count_found + count_not_found))\n",
+        "            print('%4d/%d. test suite was not found: averaged covered neurons %.3f at %d/%d' % (_, length, averaged_nc, count_not_found, count_already + count_found + count_not_found))\n",
+        "\n",
+        "            gen_img_deprocessed = deprocess_image(gen_img)\n",
+        "            #orig_img_deprocessed = deprocess_image(orig_img)\n",
+        "\n",
+        "            # save the result to disk\n",
+        "            #outputfilepath = os.path.join(output_dir, args.transformation + '_' + str(label1) + '_' + str(label2) + '_' + str(label3) + '.png')\n",
+        "            outputfilepath = os.path.join(output_dir, 'not_found_' + str(label1)+'_['+ str(_) + '].png')\n",
+        "#           print(outputfilepath)\n",
+        "            imageio.imwrite(outputfilepath, gen_img_deprocessed)\n",
+        "            #break\n",
+        "\n",
+        "            temp_per_nc1=np.append(temp_per_nc1,  neuron_covered(model_layer_dict1)[2])\n",
+        "            temp_per_nc2=np.append(temp_per_nc2,  neuron_covered(model_layer_dict2)[2])\n",
+        "            temp_per_nc3=np.append(temp_per_nc3,  neuron_covered(model_layer_dict3)[2])\n",
+        "            temp_num_nc1=np.append(temp_num_nc1,  neuron_covered(model_layer_dict1)[0])\n",
+        "            temp_num_nc2=np.append(temp_num_nc2,  neuron_covered(model_layer_dict2)[0])\n",
+        "            temp_num_nc3=np.append(temp_num_nc3,  neuron_covered(model_layer_dict3)[0])\n",
+        "\n",
+        "temp_per_nc1=temp_per_nc1.reshape(10, length)\n",
+        "temp_per_nc2=temp_per_nc2.reshape(10, length)\n",
+        "temp_per_nc3=temp_per_nc3.reshape(10, length)\n",
+        "temp_num_nc1=temp_num_nc1.reshape(10, length)\n",
+        "temp_num_nc2=temp_num_nc2.reshape(10, length)\n",
+        "temp_num_nc3=temp_num_nc3.reshape(10, length)"
+      ],
+      "execution_count": 19,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "figure0\n",
+            "\u001b[94m   0/4. found at 1! covered neurons percentage 52 neurons 0.500, 148 neurons 0.399, 268 neurons 0.463 at 1/1\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.447\u001b[0m\n",
+            "\u001b[94m   1/4. found at 0! covered neurons percentage 52 neurons 0.788, 148 neurons 0.608, 268 neurons 0.687 at 2/2\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.673\u001b[0m\n",
+            "\u001b[94m   2/4. found at 2! covered neurons percentage 52 neurons 0.808, 148 neurons 0.662, 268 neurons 0.709 at 3/3\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.705\u001b[0m\n",
+            "\u001b[94m   3/4. found at 3! covered neurons percentage 52 neurons 0.827, 148 neurons 0.716, 268 neurons 0.720 at 4/4\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.731\u001b[0m\n",
+            "figure1\n",
+            "\u001b[94m   0/4. found at 0! covered neurons percentage 52 neurons 0.827, 148 neurons 0.770, 268 neurons 0.750 at 5/5\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.765\u001b[0m\n",
+            "\u001b[94m   1/4. found at 1! covered neurons percentage 52 neurons 0.846, 148 neurons 0.797, 268 neurons 0.769 at 6/6\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.786\u001b[0m\n",
+            "\u001b[94m   2/4. found at 0! covered neurons percentage 52 neurons 0.846, 148 neurons 0.818, 268 neurons 0.817 at 7/7\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.821\u001b[0m\n",
+            "\u001b[94m   3/4. found at 2! covered neurons percentage 52 neurons 0.846, 148 neurons 0.818, 268 neurons 0.817 at 8/8\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.821\u001b[0m\n",
+            "figure2\n",
+            "\u001b[94m   0/4. found at 7! covered neurons percentage 52 neurons 0.846, 148 neurons 0.824, 268 neurons 0.825 at 9/9\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.827\u001b[0m\n",
+            "\u001b[94m   1/4. found at 1! covered neurons percentage 52 neurons 0.846, 148 neurons 0.831, 268 neurons 0.832 at 10/10\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.833\u001b[0m\n",
+            "\u001b[94m   2/4. found at 8! covered neurons percentage 52 neurons 0.846, 148 neurons 0.831, 268 neurons 0.840 at 11/11\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.838\u001b[0m\n",
+            "   3/4. test suite was not found: averaged covered neurons 0.838 at 1/12\n",
+            "figure3\n",
+            "\u001b[92m0/4. input already causes different outputs (3,8,3) at1/13: \u001b[0m\n",
+            "\u001b[92m0/4. input already causes different outputs (3,8,3) at1/13: \u001b[0m\n",
+            "\u001b[92m     covered neurons percentage 52 neurons 0.865, 148 neurons 0.831, 268 neurons 0.892\u001b[0m\n",
+            "\u001b[92m     averaged covered neurons 0.870\u001b[0m\n",
+            "   1/4. test suite was not found: averaged covered neurons 0.872 at 2/14\n",
+            "\u001b[94m   2/4. found at 2! covered neurons percentage 52 neurons 0.865, 148 neurons 0.838, 268 neurons 0.896 at 12/15\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.874\u001b[0m\n",
+            "\u001b[94m   3/4. found at 1! covered neurons percentage 52 neurons 0.865, 148 neurons 0.838, 268 neurons 0.896 at 13/16\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.874\u001b[0m\n",
+            "figure4\n",
+            "\u001b[94m   0/4. found at 0! covered neurons percentage 52 neurons 0.865, 148 neurons 0.845, 268 neurons 0.899 at 14/17\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.878\u001b[0m\n",
+            "\u001b[94m   1/4. found at 0! covered neurons percentage 52 neurons 0.865, 148 neurons 0.845, 268 neurons 0.914 at 15/18\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.887\u001b[0m\n",
+            "\u001b[94m   2/4. found at 0! covered neurons percentage 52 neurons 0.865, 148 neurons 0.845, 268 neurons 0.914 at 16/19\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.887\u001b[0m\n",
+            "\u001b[94m   3/4. found at 0! covered neurons percentage 52 neurons 0.865, 148 neurons 0.845, 268 neurons 0.914 at 17/20\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.887\u001b[0m\n",
+            "figure5\n",
+            "\u001b[94m   0/4. found at 0! covered neurons percentage 52 neurons 0.865, 148 neurons 0.858, 268 neurons 0.925 at 18/21\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.897\u001b[0m\n",
+            "\u001b[94m   1/4. found at 0! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.925 at 19/22\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.900\u001b[0m\n",
+            "\u001b[94m   2/4. found at 2! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.925 at 20/23\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.900\u001b[0m\n",
+            "\u001b[94m   3/4. found at 2! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.925 at 21/24\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.900\u001b[0m\n",
+            "figure6\n",
+            "\u001b[94m   0/4. found at 1! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.929 at 22/25\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.902\u001b[0m\n",
+            "\u001b[94m   1/4. found at 2! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.929 at 23/26\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.902\u001b[0m\n",
+            "\u001b[94m   2/4. found at 2! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.933 at 24/27\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.904\u001b[0m\n",
+            "\u001b[94m   3/4. found at 1! covered neurons percentage 52 neurons 0.885, 148 neurons 0.858, 268 neurons 0.933 at 25/28\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.904\u001b[0m\n",
+            "figure7\n",
+            "\u001b[94m   0/4. found at 0! covered neurons percentage 52 neurons 0.904, 148 neurons 0.858, 268 neurons 0.940 at 26/29\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.910\u001b[0m\n",
+            "\u001b[94m   1/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.944 at 27/30\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.915\u001b[0m\n",
+            "\u001b[94m   2/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 28/31\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   3/4. found at 0! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 29/32\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "figure8\n",
+            "\u001b[94m   0/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 30/33\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   1/4. found at 3! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 31/34\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   2/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 32/35\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   3/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 33/36\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "figure9\n",
+            "\u001b[94m   0/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 34/37\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   1/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 35/38\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   2/4. found at 2! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 36/39\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "\u001b[94m   3/4. found at 1! covered neurons percentage 52 neurons 0.923, 148 neurons 0.858, 268 neurons 0.948 at 37/40\u001b[0m\n",
+            "\u001b[94m     averaged covered neurons 0.917\u001b[0m\n",
+            "CPU times: user 54.5 s, sys: 406 ms, total: 54.9 s\n",
+            "Wall time: 55 s\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "YLyQvSQN5bPM",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 102
+        },
+        "outputId": "2a6fcdf7-9def-46f3-e031-43fa73bb6449"
+      },
+      "source": [
+        "data_per_x1 = np.average(temp_per_nc1, axis=1)\n",
+        "data_per_x2 = np.average(temp_per_nc2, axis=1)\n",
+        "data_per_x3 = np.average(temp_per_nc3, axis=1)\n",
+        "std_per_x1 = np.std(temp_per_nc1, axis=1)\n",
+        "std_per_x2 = np.std(temp_per_nc2, axis=1)\n",
+        "std_per_x3 = np.std(temp_per_nc3, axis=1)\n",
+        "\n",
+        "print(data_per_x1, std_per_x1, std_per_x2, std_per_x3)"
+      ],
+      "execution_count": 20,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "[0.73076923 0.84134615 0.84615385 0.86538462 0.86538462 0.87980769\n",
+            " 0.88461538 0.91826923 0.92307692 0.92307692] [0.13392681 0.00832717 0.         0.         0.         0.00832717\n",
+            " 0.         0.00832717 0.         0.        ] [0.12033621 0.01940731 0.00292576 0.00292576 0.         0.\n",
+            " 0.         0.         0.         0.        ] [0.10571545 0.02966066 0.00618773 0.00186567 0.00646288 0.\n",
+            " 0.00186567 0.00309387 0.         0.        ]\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "NIlpsRy3XY95",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 105
+        },
+        "outputId": "d2f69319-c86c-4d79-ea92-0b51703e9fe3"
+      },
+      "source": [
+        "data_num_x1 = np.average(temp_num_nc1, axis=1)\n",
+        "data_num_x2 = np.average(temp_num_nc2, axis=1)\n",
+        "data_num_x3 = np.average(temp_num_nc3, axis=1)\n",
+        "std_num_x1 = np.std(temp_num_nc1, axis=1)\n",
+        "std_num_x2 = np.std(temp_num_nc2, axis=1)\n",
+        "std_num_x3 = np.std(temp_num_nc3, axis=1)\n",
+        "\n",
+        "print(data_num_x1, std_num_x1, std_num_x2, std_num_x3)"
+      ],
+      "execution_count": 21,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "[38.   43.75 44.   45.   45.   45.75 46.   47.75 48.   48.  ] [6.96419414 0.4330127  0.         0.         0.         0.4330127\n",
+            " 0.         0.4330127  0.         0.        ] [17.80975856  2.87228132  0.4330127   0.4330127   0.          0.\n",
+            "  0.          0.          0.          0.        ] [28.33174015  7.94905655  1.6583124   0.5         1.73205081  0.\n",
+            "  0.5         0.8291562   0.          0.        ]\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Qc6vamXyXbEM",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 420
+        },
+        "outputId": "f1980d32-1bf4-4d94-9f37-7365c6497a2a"
+      },
+      "source": [
+        "import matplotlib\n",
+        "import matplotlib.pyplot as plt\n",
+        "t = np.linspace(0, 10, 10)\n",
+        "fig = plt.figure(figsize=(20,7),dpi=60)\n",
+        "ax = fig.add_subplot(1,2,1)\n",
+        "plt.errorbar(t, data_per_x1, yerr=std_per_x1, marker=\"o\", label=\"model1\")\n",
+        "plt.errorbar(t, data_per_x2, yerr=std_per_x2, marker=\"s\", label=\"model2\")\n",
+        "plt.errorbar(t, data_per_x3, yerr=std_per_x3, marker=\"^\", label=\"model3\")\n",
+        "ax.legend(loc=0)\n",
+        "plt.legend(fontsize=18)\n",
+        "plt.title(\"neuron coverage\", fontsize=18)\n",
+        "ax.set_xlabel('step', fontsize=18)\n",
+        "ax.set_ylabel('neuron coverage', fontsize=18)\n",
+        "plt.tick_params(labelsize=16)\n",
+        "\n",
+        "ax = fig.add_subplot(1,2,2)\n",
+        "plt.errorbar(t, data_num_x1, yerr=std_num_x1, marker=\"o\", label=\"model1:\"+str(neuron_covered(model_layer_dict1)[1]))\n",
+        "plt.errorbar(t, data_num_x2, yerr=std_num_x2, marker=\"s\", label=\"model2:\"+str(neuron_covered(model_layer_dict2)[1]))\n",
+        "plt.errorbar(t, data_num_x3, yerr=std_num_x3, marker=\"^\", label=\"model3:\"+str(neuron_covered(model_layer_dict3)[1]))\n",
+        "ax.legend(loc=0)\n",
+        "plt.legend(fontsize=18)\n",
+        "plt.title(\"neuron coverage\", fontsize=18)\n",
+        "ax.set_xlabel('step', fontsize=18)\n",
+        "ax.set_ylabel('# covered neuron ', fontsize=18)\n",
+        "plt.tick_params(labelsize=16)"
+      ],
+      "execution_count": 22,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "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\nZ2b9wxEvQHzFEb5UUcGRL/yvcJ1SRESk1Tnniuvdj/0D59wFwCB8yXc2vkd5HYlQeOHz7PXwG//I\ntWf+CfKX+56jfalGs4mISGiEq2c7w//eeCbzI/XK6uvif/8mcANwMbAVeN2fuDdgZhPMbLmZLd+7\nd+/5R47HnvIAACAASURBVPvs9fRdfQcGXPLuL2D+pb5GWUREpG3a5n9/wDmXDVwbyWDCoqwIKvzf\nKdR6AQcVTR64IiIi0mLhSrZL/e+dGq2/oF5Zc9vPc84V+oedP4BvYrWvNN7YObfCOTfROTcxOzv7\n/KMtK8LjrSAOSKgqhfLDvkZZRESkjXDOxTnn8usWgc+ASn/ZttPuKCIiIuckLMm2c+4YsBsYXLfO\nP/PpAHxDyRurW6fnfYqIiLQy51ytc+4S59zHkY5FRESkrQjnBGnPADPN7Gr/zKcPA9XAK403dM7t\nBVYBD5hZpn+ilkfwDTt/N4wxi4iIiIiIiAQtnMn2E/gmXVkPHAaGAjc6546b2RfM7LiZDa23/RR8\njwgrAPYBXwTGOOeaG3YuIiIicu7Su0PyBb7PyRdAyoW+dSIiIiEStudsO+ccvmdrP9RM2R4grdG6\nUnzP5f5+WAKsL707NbVejlWV0TExHU9cvBpgERGRtuSud+HIZ7C4H0z/E1xwcaQjEhGRNiZsyXZM\nuetdigu3cOP6f+H1r/4fevT4UqQjEhERERERkRgSzmHkIiIiIiIiIu2Ckm0RERERERGREFOyLSIi\nIiIiIhJi7e6e7RMnTnDw4EFqamrOuF11dTLzes+jrCyZnTt3hik6aczj8dC1a1dSU1MjHYqIiIiI\niMg5a1fJ9okTJ9i/fz89e/YkMTHxjNtWVZ2gptTDpRk5JCYq0YuUqqoqPv/8czIzM5Vwi4iIiIhI\nzGhXw8gPHjx4Tom2RI/ExER69uzJwYMHIx2KiIiIiIjIOWtXyXZNTY0S7RiUmJh41mH/IiIiIiIi\n0aRdJdsiIiIiIiIi4aBkW0RERERERCTElGyfh2Mnq/nlf2/n2MnqSIciIiIiIiIiUUTJ9nkoPVnN\n4jc/pbQNJ9urV6/GzNi9e3dQ++Xk5DBz5szA8o4dO5g+fTr9+vXD4/Fwww03hDZQERERERGRKNKu\nHv0lkfPxxx+zdu1arrvuOqqr2+6XEyIiIiIiIqCebQmTb3zjG+zdu5cVK1bQt2/fSIcjIiIiIiLS\n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\n",
+            "text/plain": [
+              "<Figure size 1200x420 with 2 Axes>"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "dJXfVtcaXd-2",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": 0,
+      "outputs": []
+    }
+  ]
+}
